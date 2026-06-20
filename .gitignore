@@ -1,0 +1,30 @@
+# DATA & FILE BESAR
+data/
+!data/
+data/*
+!data/registry.json
+chroma_db/
+qdrant_data/
+experiments/results/*
+!experiments/results/.gitkeep
+
+
+# FILE SENSITIF & KONFIGURASI
+.env
+.env.local
+
+
+# PYTHON & ENVIRONMENT CAVEARS
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+mrag_env/
+
+
+# LOGS & TEMPORARY FILES
+*.log
+scraper_idx.log
+.pytest_cache/
+.ipynb_checkpoints/
