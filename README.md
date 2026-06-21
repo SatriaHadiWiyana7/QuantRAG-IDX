@@ -1,41 +1,59 @@
-# QuantRAG-IDX 📊🤖
+# 📈 M-RAG Laporan Keuangan IDX
 
-QuantRAG-IDX adalah sistem **Multimodal Retrieval-Augmented Generation (M-RAG)** mutakhir yang dirancang khusus untuk mengekstrak, menganalisis, dan melakukan tanya-jawab cerdas berbasis dokumen laporan keuangan (*Annual Report*) perusahaan publik yang terdaftar di Bursa Efek Indonesia (IDX).
+Proyek ini merupakan implementasi tingkat lanjut dari **Multimodal Retrieval-Augmented Generation (M-RAG)** yang dirancang khusus untuk menganalisis, mengekstrak, dan menjawab pertanyaan berdasarkan Laporan Tahunan (Annual Report) perusahaan publik di Bursa Efek Indonesia (IDX). 
 
-Sistem ini tidak hanya membaca teks naratif biasa, melainkan mengintegrasikan tiga modalitas krusial secara hibrida: **teks finansial**, **tabel keuangan terstruktur**, dan **grafik/chart performa bisnis**.
-
----
-
-## 🚀 Fitur Utama & Keunggulan
-- **Multimodal Pipeline:** Pemrosesan simultan untuk teks (naratif), tabel (neraca, laba/rugi), dan visual (grafik batang, garis, lingkaran) menggunakan Vision-Language Models (VLM).
-- **Robust Table Serialization:** Mengonversi tabel numerik kompleks menjadi representasi tekstual terstruktur guna mempertahankan konteks hubungan antarbaris dan kolom.
-- **Hybrid Multi-Index Retrieval:** Menggabungkan pencarian semantik (*dense retrieval*) berbasis kedekatan vektor dengan pencarian kata kunci (*sparse retrieval* BM25) menggunakan metode *Reciprocal Rank Fusion (RRF)*.
-- **Financial-Domain Guardrails:** Verifikasi nilai numerik dan kepatuhan unit finansial secara ketat demi meminimalkan risiko halusinasi informasi pada LLM[cite: 1].
+Sistem ini mampu memproses berbagai modalitas data dari dokumen PDF finansial, termasuk teks naratif yang panjang, tabel tanpa batas (*borderless tables*), dan elemen visual (grafik/chart).
 
 ---
 
-## 🛠️ Stack Teknologi
-- **Bahasa:** Python 3.10+[cite: 1]
-- **PDF Extraction:** `pymupdf` (Fitz), `camelot-py`, `pdfplumber`[cite: 1]
-- **Vision Models:** InternVL2 / LLaVA (via Ollama) / GPT-4V[cite: 1]
-- **Embeddings:** `paraphrase-multilingual-mpnet-base-v2` (Teks/Tabel) & CLIP (Gambar)[cite: 1]
-- **Vector Store:** ChromaDB / Qdrant[cite: 1]
-- **LLM Generator:** Llama-3-8B-Instruct / Mistral-7B / GPT-4o-mini[cite: 1]
-- **Framework Evaluasi:** RAGAS, BERTScore, & Custom Financial Metrics[cite: 1]
+## 🏗️ Arsitektur Sistem
+
+Proyek ini dibagi menjadi empat fase utama (Pipeline End-to-End):
+
+1. **Ingestion (Pemrosesan Data Mentah)**
+   - Mengekstrak teks naratif dan membaginya menjadi *chunks* yang dapat dikelola.
+   - Mengekstrak struktur tabel finansial secara presisi (menggunakan *Camelot*).
+   - Mengekstrak aset visual (grafik/chart) dan memberikan *caption* tekstual menggunakan model *Vision*.
+2. **Indexing (Penyimpanan Vektor)**
+   - Mengonversi data multimodal menjadi representasi vektor numerik berdimensi tinggi.
+   - Menyimpannya ke dalam *Vector Database* lokal (**ChromaDB**) dengan pemisahan koleksi `idx_text` dan `idx_image`.
+3. **Retrieval (Pencarian & Pengurutan Ulang)**
+   - **Hybrid Retrieval:** Menggabungkan *Dense Retrieval* (Pencarian Semantik Berbasis Vektor) dan *Sparse Retrieval* (Pencarian Kata Kunci Eksak / BM25).
+   - **Reciprocal Rank Fusion (RRF):** Menggabungkan skor dari sistem Dense dan Sparse.
+   - **Cross-Encoder Reranking:** Menilai ulang (rerank) kandidat dokumen (Top 75) untuk menyingkirkan *noise* bahasa asing dan memastikan presisi maksimal dari konteks yang dikembalikan.
+4. **Generation (Pembangkitan Jawaban LLM)**
+   - Merakit *prompt* yang ketat (anti-halusinasi) dari gabungan teks, tabel, dan caption.
+   - Meminta *Large Language Model* (LLM) untuk menjawab dan menyertakan sitasi halaman secara eksplisit.
 
 ---
 
-## 📂 Struktur Proyek
+## 🧠 Spesifikasi Model
+
+Sistem ini memanfaatkan kombinasi model *Open-Source* dan *Cloud API* berkinerja tinggi:
+
+- **LLM Generator:** `gemini-2.5-flash` (Google Gemini API) - *Dipilih karena kemampuannya dalam penalaran konteks panjang dan merajut teks tabel yang terfragmentasi.*
+- **Text Embedding:** `paraphrase-multilingual-mpnet-base-v2` (SentenceTransformers) - *Optimal untuk memahami bahasa Indonesia dan terminologi finansial dwibahasa.*
+- **Image/Vision Embedding:** `clip-ViT-L-14` (OpenAI CLIP) - *Digunakan untuk ekstraksi fitur visual dan Cross-Modal Linking antara gambar dan teks.*
+- **Cross-Encoder Reranker:** `cross-encoder/ms-marco-MiniLM-L-6-v2` - *Berperan vital dalam memfilter dokumen dari jebakan kosakata (Vocabulary Mismatch).*
+- **Sparse Retriever:** `rank_bm25` (BM25Okapi) - *Pencocokan kata kunci eksak untuk pencarian angka dan metrik finansial (exact needle-in-a-haystack).*
+
+---
+
+## 📂 Struktur Direktori Utama
+
 ```text
-QuantRAG-IDX/
-├── data/               # Dataset PDF raw, hasil processed, dan ground-truth QA (Diabaikan oleh Git)
-├── src/                # Kode sumber utama aplikasi
-│   ├── ingestion/      # Ekstraksi PDF, tabel, gambar, dan pembuatan caption grafik
-│   ├── indexing/       # Pembuatan embedding teks, tabel, dan gambar ke Vector Store
-│   ├── retrieval/      # Strategi Dense, Sparse, Hybrid, dan Cross-Encoder Reranking
-│   ├── generation/     # Prompt builder, integrasi LLM, dan mekanisme anti-halusinasi
-│   ├── evaluation/     # Framework pengujian metrik RAGAS dan akurasi keuangan
-│   └── utils/          # Logger, konfigurasi hyperparameter, dan validator data
-├── experiments/        # Dokumentasi konfigurasi eksperimen, notebook eksplorasi, dan hasil studi ablasi
-├── tests/              # Unit testing komponen kritis pipeline
-└── scripts/            # Skrip otomatisasi eksekusi pipeline end-to-end
+Riset_UI/
+│
+├── data/
+│   ├── raw/                 # File PDF mentah (contoh: BBCA_2023_annual_report.pdf)
+│   ├── processed/           # Hasil chunking teks, JSON tabel, dan ekstraksi gambar
+│   └── vector_store/        # Basis data vektor lokal (ChromaDB)
+│
+├── src/
+│   ├── ingestion/           # Pipeline ekstraksi (PDF, Tabel, Gambar, Metadata)
+│   ├── indexing/            # text_embedder.py, table_embedder.py, image_embedder.py
+│   ├── retrieval/           # dense_retriever.py, sparse_retriever.py, hybrid_retriever.py, reranker.py
+│   └── generation/          # prompt_builder.py, answer_generator.py
+│
+├── .env                     # Konfigurasi Environment Variables (API Keys)
+└── README.md                # Dokumentasi proyek
